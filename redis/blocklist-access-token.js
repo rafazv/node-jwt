@@ -1,8 +1,8 @@
-const blacklist = require('./blacklist')
+const redis = require('redis')
 
-const { promisify } = require('util')
-const existsAsync = promisify(blacklist.exists).bind(blacklist)
-const setAsync = promisify(blacklist.set).bind(blacklist)
+const blocklist = redis.createClient({prefix: 'blocklist-access-token:'})
+const manipulaLista = require('./manipula-lista')
+const manipulaBlocklist = manipulaLista(blocklist)
 
 const jwt = require('jsonwebtoken')
 const {createHash} = require('crypto')
@@ -15,13 +15,11 @@ module.exports = {
     setToken: async token => {
         const dataExp = jwt.decode(token).exp
         const tokenHash = geraTokenHash(token)
-        await setAsync(tokenHash, '')
-        blacklist.expireat(tokenHash, dataExp)
+        await manipulaBlocklist.adiciona(tokenHash, '', dataExp)
     },
 
     getToken: async token => {
         const tokenHash = geraTokenHash(token)
-        const res = await existsAsync(tokenHash)
-        return res === 1
+        return await manipulaBlocklist.contemChave(tokenHash)
     }
 }
